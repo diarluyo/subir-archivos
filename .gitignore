@@ -1,0 +1,4 @@
+node_modules
+*.log
+uploads
+service_account.json
