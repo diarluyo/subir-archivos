@@ -59,7 +59,7 @@ app.get('/oauth2callback', async (req, res) => {
     drive = google.drive({ version: 'v3', auth: oauth2Client });
 
     // Mostrar el token en consola (solo una vez, para copiarlo a Render)
-    console.log('💾 TOKEN OBTENIDO:\n', JSON.stringify(tokens, null, 2));
+    //console.log('💾 TOKEN OBTENIDO:\n', JSON.stringify(tokens, null, 2));
 
     res.send(`
       <h3>✅ Autenticación completada.</h3>
@@ -73,35 +73,43 @@ app.get('/oauth2callback', async (req, res) => {
 });
 
 // 🔹 Ruta para subir archivos al Drive
-app.post('/upload', upload.single('file'), async (req, res) => {
+/* app.post('/upload', upload.single('file'), async (req, res) => { */
+app.post('/upload', upload.array('files',10), async (req, res) => {
   if (!drive) return res.status(400).json({ error: 'No autorizado aún. Visita la raíz (/) para autorizar.' });
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No se subieron archivos' });
+    }
 
-  const filePath = req.file.path;
-  const fileName = req.file.originalname;
-  const mimeType = req.file.mimetype;
+    try {
+      const uploadResults = [];
 
-  try {
-    const response = await drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [FOLDER_ID]
-      },
-      media: {
-        mimeType,
-        body: fs.createReadStream(filePath)
-      },
-      fields: 'id, name'
-    });
+      for (const file of req.files) {
+        const filePath = file.path;
+        const fileName = file.originalname;
+        const mimeType = file.mimetype;
 
-    // Eliminar archivo temporal
-    fs.unlink(filePath, () => {});
-    res.json({ success: true, fileId: response.data.id, fileName: response.data.name });
-  } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).json({ error: 'Error uploading to Drive', details: err.message });
-  }
-});
+        const response = await drive.files.create({
+          requestBody: {
+            name: fileName,
+            parents: [FOLDER_ID]
+          },
+          media: {
+            mimeType,
+            body: fs.createReadStream(filePath)
+          },
+          fields: 'id, name'
+        });
+
+        fs.unlink(filePath, () => {});
+        uploadResults.push({ id: response.data.id, name: response.data.name });
+      }
+
+      res.json({ success: true, uploaded: uploadResults });
+    } catch (err) {
+      console.error('Upload error:', err);
+      res.status(500).json({ error: 'Error subiendo archivos a Drive', details: err.message });
+    }
+  });
 
 // 🔹 Iniciar servidor
 const port = process.env.PORT || 10000;
