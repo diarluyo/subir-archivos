@@ -59,7 +59,7 @@ app.get('/oauth2callback', async (req, res) => {
     drive = google.drive({ version: 'v3', auth: oauth2Client });
 
     // Mostrar el token en consola (solo una vez, para copiarlo a Render)
-    //console.log('💾 TOKEN OBTENIDO:\n', JSON.stringify(tokens, null, 2));
+    console.log('💾 TOKEN OBTENIDO:\n', JSON.stringify(tokens, null, 2));
 
     res.send(`
       <h3>✅ Autenticación completada.</h3>
